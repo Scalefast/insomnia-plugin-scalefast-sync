@@ -5,5 +5,6 @@ export interface UserConfig {
     'configFileName': string,
     'branch': string,
     'createMergeRequest': boolean,
-    'mergeRequestId': number
+    'mergeRequestId': number,
+    'currentTag': string
 }

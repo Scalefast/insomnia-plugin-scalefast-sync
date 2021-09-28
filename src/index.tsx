@@ -27,28 +27,37 @@ class GitlabConfigForm extends React.Component<any, any> {
             'branch': "",
             'branchOptions': [],
             'createMergeRequest': true,
-            'mergeRequestId': null
+            'mergeRequestId': null,
+            'currentTag': null
         };
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
+
+        const interval = setInterval(() => {
+            console.log("Logs every 5 seconds");
+        }, 5000)
+
+
     }
 
     async componentDidMount() {
         const config: UserConfig = await loadConfig(this.props.context);
         this.setState(config);
+
         await this.loadBranches();
     }
+
 
     private handleChange(event) {
         const { target: { name, value } } = event;
         console.debug("Update state property: ", name, value);
         this.setState({[name]: value});
     }
-    
+
     private async handleSubmit(event) {
         try {
-            storeConfig(this.props.context, this.state as UserConfig);
+            await storeConfig(this.props.context, this.state as UserConfig);
             await this.props.context.app.alert('Success!', 'To change your configuration, just start the setup again.');
         } catch(e) {
             console.error(e);
@@ -183,8 +192,35 @@ async function pullWorkspace(context) {
         const workspace = await gitlabProvider.pullWorkspace();
         await context.data.import.raw(JSON.stringify(workspace));
 
-        await context.app.alert('Success!', 'Your workspace config was successfully pulled.');
+        const latestTag = await gitlabProvider.fetchLastTag();
+        config.currentTag = latestTag.name;
+
+        await storeConfig(context, config);
+
     } catch(e) {
+        console.error(e);
+        throw e;
+    }
+}
+
+async function checkNewRelease(context) {
+    try {
+        const config: UserConfig = await loadConfig(context);
+        const gitlabProvider = new Gitlab(config);
+
+        const latestTag = await gitlabProvider.fetchLastTag();
+
+        if (latestTag.name !== config.currentTag) {
+            await pullWorkspace(context);
+            await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + latestTag.name);
+
+        } else {
+            await context.app.alert('Info', 'You are using the most recent workspace release v' + latestTag.name);
+        }
+
+    }
+    catch (e) {
+        console.error(e);
         await context.app.alert('Error!', 'Something went wrong. Please try pulling again and check your setup.');
     }
 }
@@ -209,7 +245,7 @@ const workspaceActions = [
         label: 'GitLab - Pull Workspace',
         icon: 'fa-arrow-down',
         action: async(context) => {
-            await pullWorkspace(context);
+            await checkNewRelease(context);
         },
     },
     {

@@ -1,10 +1,11 @@
-# Universal Git Plugin for Insomnia API Client
+# Gitlab Sync plugin for Insomnia API Client
 
 This plugin for Insomnia aims to ease syncing your workspaces, directories or even single requests to your Git repositories. Right now GitLab is supported only but GitHub and others will be supported soon.
 
 ## Current Features
 ### GitLab
-*   Sync Workspace
+* Sync Workspace
+* Creates a user branch and detects if a MR is open, if not creates it.
 
 ## How to use this plugin
 

@@ -1,18 +1,18 @@
 {
-    "name": "insomnia-plugin-universal-git",
-    "version": "1.3.1",
-    "description": "Plugin to sync your insomnia collections and environments with GitLab or Github",
+    "name": "insomnia-plugin-gitlab-sync",
+    "version": "1.0.0",
+    "description": "Plugin to sync your insomnia collections and environments with GitLab",
     "main": "dist/index.js",
     "files": [
         "dist",
         "assets"
     ],
     "author": {
-        "name": "Jan Riedel",
-        "email": "contact@exaspace.de"
+        "name": "Diego Rin Martín",
+        "email": "diego.rin@scalefast.com"
     },
     "license": "MIT",
-    "repository": "git@github.com:riedeljan/insomnia-universal-git.git",
+    "repository": "git@setnext.scalefast.com:v5/tools/insomnia-gitlab-sync.git",
     "keywords": [
         "git",
         "github",
@@ -22,11 +22,11 @@
         "plugin"
     ],
     "insomnia": {
-        "name": "insomnia-plugin-universal-git",
-        "displayName": "Universal Git",
-        "description": "Plugin to sync your insomnia collections and environments with GitLab or Github",
+        "name": "insomnia-plugin-gitlab-sync",
+        "displayName": "Insomnia Gitlab Sync",
+        "description": "Plugin to sync your insomnia collections and environments with GitLab",
         "publisher": {
-            "name": "Jan Riedel"
+            "name": "Diego Rin Martí"
         },
         "images": {
             "icon": "assets/git.svg",
