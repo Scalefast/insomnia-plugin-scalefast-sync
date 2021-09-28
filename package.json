@@ -1,7 +1,7 @@
 {
-    "name": "insomnia-plugin-gitlab-sync",
+    "name": "insomnia-plugin-scalefast-sync",
     "version": "1.0.0",
-    "description": "Plugin to sync your insomnia collections and environments with GitLab",
+    "description": "Plugin to sync your insomnia collections and environments with Scalefast GitLab",
     "main": "dist/index.js",
     "files": [
         "dist",
@@ -22,11 +22,11 @@
         "plugin"
     ],
     "insomnia": {
-        "name": "insomnia-plugin-gitlab-sync",
-        "displayName": "Insomnia Gitlab Sync",
-        "description": "Plugin to sync your insomnia collections and environments with GitLab",
+        "name": "insomnia-plugin-scalefast-sync",
+        "displayName": "Insomnia Sclefast Gitlab Sync",
+        "description": "Plugin to sync your insomnia collections and environments with Scalefast GitLab",
         "publisher": {
-            "name": "Diego Rin Martí"
+            "name": "Diego Rin Martín"
         },
         "images": {
             "icon": "assets/git.svg",
