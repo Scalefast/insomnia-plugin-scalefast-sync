@@ -14,19 +14,19 @@ This plugin has two main features, pull workspace from gitlab repository and pus
 
 ### Push workspace
 Pursuing simplicity and transparency for the user the push flow it as follows, every time the user tries to push changes:
- - The plugin checks for the existence of branch with the form of <username>_collection_updates, if not found creates it.
+ - The plugin checks for the existence of branch with the form of username_collection_updates, if not found creates it.
  - The plugin checks for an opened merge request from user branch to master, if not found creates it.
  - The plugin commits changes to the configured repository.
- - If the MR is merged/closed in the next push attempt it will be recreated.
+ - If the MR is merged/closed, in the next push attempt it will be recreated.
  - If the branch is deleted as a merge result, the plugin will recreate it in the next push attempt.
 
 ### Pull workspace
 Plugin only pull changes from tags in master branch, so the first time you pull workspace, the plugin gets the most recent
-tag, pulls it and update the current workspace with the content in repository. In subsequent pull attempts plugin will only update current workspace if a new tag is released.
+tag, pulls it and update the current workspace with the content in repository. In subsequent pull attempts plugin will only update current workspace if a new tag is released. So, it's mandatory that configured repo has, at least, one tag created. 
 
 After installing just hit the dropdown menu located right beneath the workspace/collections name, go through the setup and start pulling/pushing your config.
 
-![server configuration](./docs/plugin-menu.png)
+![server configuration](https://i.postimg.cc/kgCZDH6c/plugin-menu.png)
 
 ## Setup
 
@@ -35,5 +35,5 @@ After installing just hit the dropdown menu located right beneath the workspace/
 * Project ID: Create a new project to store your configs directly in GitLab and enter the project id which you find in the settings.
 * Workspace File Name: The file your workspace will be stored under (JSON). Choose this freely.
 
-![server configuration](./docs/plugin-setup.png)
+![server configuration](https://i.postimg.cc/sgJLWJ5R/plugin-setup.png)
 
