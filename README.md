@@ -2,20 +2,31 @@
 
 This plugin for Insomnia aims to ease syncing your workspaces, directories or even single requests to your Git repositories. Right now GitLab is supported only but GitHub and others will be supported soon.
 
-## Current Features
-### GitLab
-* Sync Workspace
-* Creates a user branch and detects if a MR is open, if not creates it.
+## Installation
+
+As this is a Scalefast private plugin you can't install it using the [Insomnia Plugin Hub](https://insomnia.rest/plugins) and you need to install it manually.
+
 
 ## How to use this plugin
 
-Just install it via the [Insomnia Plugin Hub](https://insomnia.rest/plugins).
+This plugin has two main features, pull workspace from gitlab repository and push workspace changes to gitlab repository.
 
-As I'm currently releasing updates nearly every day and the plugin hub only updates very rarely I'd recommend to install the plugin directly from npm by its name `insomnia-plugin-universal-git` under `Insomnia -> Preferences -> Plugins`.
+### Push workspace
+Pursuing simplicity and transparency for the user the push flow it as follows, every time the user tries to push changes:
+ - The plugin checks for the existence of branch with the form of <username>_collection_updates, if not found creates it.
+ - The plugin checks for an opened merge request from user branch to master, if not found creates it.
+ - The plugin commits changes to the configured repository.
+ - If the MR is merged/closed in the next push attempt it will be recreated.
+ - If the branch is deleted as a merge result, the plugin will recreate it in the next push attempt.
+
+### Pull workspace
+Plugin only pull changes from tags in master branch, so the first time you pull workspace, the plugin gets the most recent
+tag, pulls it and update the current workspace with the content in repository. In subsequent pull attempts plugin will only update current workspace if a new tag is released.
+
 
 After installing just hit the dropdown menu located right beneath the workspace/collections name, go through the setup and start pulling/pushing your config.
 
-![Bildschirmfoto 2021-07-15 um 12 02 42](https://user-images.githubusercontent.com/10552010/125770090-77a957b7-51c4-4012-b45d-abbf92672ea4.png)
+![server configuration](./docs/plugin-menu.png)
 
 ## Setup
 
@@ -24,8 +35,5 @@ After installing just hit the dropdown menu located right beneath the workspace/
 * Project ID: Create a new project to store your configs directly in GitLab and enter the project id which you find in the settings.
 * Workspace File Name: The file your workspace will be stored under (JSON). Choose this freely.
 
-![Bildschirmfoto 2021-07-15 um 12 07 20](https://user-images.githubusercontent.com/10552010/125770678-11605595-13be-472c-a350-a8b09a2a5d6f.png)
+![server configuration](./docs/plugin-setup.png)
 
-## Branches
-
-Multi-Branch support is implemented. You can choose from your existing branches or create new ones in the Setup.

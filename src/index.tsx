@@ -184,16 +184,15 @@ async function pushWorkspace(context, models) {
     }
 }
 
-async function pullWorkspace(context) {
+async function pullWorkspace(context, tag) {
     try {
         const config: UserConfig = await loadConfig(context);
         const gitlabProvider = new Gitlab(config);
 
-        const workspace = await gitlabProvider.pullWorkspace();
+        const workspace = await gitlabProvider.pullWorkspace(tag);
         await context.data.import.raw(JSON.stringify(workspace));
 
-        const latestTag = await gitlabProvider.fetchLastTag();
-        config.currentTag = latestTag.name;
+        config.currentTag = tag;
 
         await storeConfig(context, config);
 
@@ -211,11 +210,11 @@ async function checkNewRelease(context) {
         const latestTag = await gitlabProvider.fetchLastTag();
 
         if (latestTag.name !== config.currentTag) {
-            await pullWorkspace(context);
+            await pullWorkspace(context, latestTag.name);
             await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + latestTag.name);
 
         } else {
-            await context.app.alert('Info', 'You are using the most recent workspace release v' + latestTag.name);
+            await context.app.alert('Info', 'You are using the most recent workspace release: v' + latestTag.name);
         }
 
     }

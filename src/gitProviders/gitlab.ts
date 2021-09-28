@@ -106,10 +106,10 @@ export class Gitlab {
         }
     }
 
-    async pullWorkspace() {
+    async pullWorkspace(tag) {
         try {
             const response = await this.authenticate().get(
-                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName}/raw?ref=master`
+                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName}/raw?ref=${tag}`
             );
 
             return (response.data);
