@@ -1,10 +1,11 @@
 # Gitlab Sync plugin for Insomnia API Client
 
-This plugin for Insomnia aims to ease syncing your workspaces, directories or even single requests to your Git repositories. Right now GitLab is supported only but GitHub and others will be supported soon.
+This plugin for Insomnia aims to ease syncing your workspaces, directories or even single requests to your Git repositories. Right now GitLab is supported.
+This plugin is based on [Insomnia Universal Git](https://insomnia.rest/plugins/insomnia-plugin-universal-git) and modified to adapt to Scalefast needs, so if you are not a Scalefast developer probably it doesn't make sense that you use this plugin, and I recommend you to install and use the aforementioned plugin. 
 
 ## Installation
 
-As this is a Scalefast private plugin you can't install it using the [Insomnia Plugin Hub](https://insomnia.rest/plugins) and you need to install it manually.
+Just install it via the [Insomnia Plugin Hub](https://insomnia.rest/plugins) or using the Insomnia plugin interface and using insomnia-plugin-scalefast-sync as npm package to install.
 
 
 ## How to use this plugin
@@ -22,7 +23,6 @@ Pursuing simplicity and transparency for the user the push flow it as follows, e
 ### Pull workspace
 Plugin only pull changes from tags in master branch, so the first time you pull workspace, the plugin gets the most recent
 tag, pulls it and update the current workspace with the content in repository. In subsequent pull attempts plugin will only update current workspace if a new tag is released.
-
 
 After installing just hit the dropdown menu located right beneath the workspace/collections name, go through the setup and start pulling/pushing your config.
 

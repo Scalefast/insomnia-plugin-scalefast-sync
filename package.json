@@ -5,18 +5,25 @@
     "main": "dist/index.js",
     "files": [
         "dist",
-        "assets"
+        "assets",
+        "docs"
     ],
-    "author": {
-        "name": "Diego Rin Martín",
-        "email": "diego.rin@scalefast.com"
-    },
+    "authors": [
+        {
+            "name": "Jan Riedel",
+            "email": "contact@exaspace.de"
+        },
+        {
+            "name": "Diego Rin Martín",
+            "email": "diego.rin@scalefast.com"
+        }
+    ],
     "license": "MIT",
-    "repository": "git@setnext.scalefast.com:v5/tools/insomnia-gitlab-sync.git",
+    "repository": "git@setnext.scalefast.com:v5/tools/insomnia-plugin-scalefast-sync.git",
     "keywords": [
         "git",
-        "github",
         "gitlab",
+        "scalefast",
         "sync",
         "insomnia",
         "plugin"
