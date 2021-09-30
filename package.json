@@ -1,5 +1,5 @@
 {
-  "name": "insomnia-plugin-scalefast-sync",
+  "name": "@scalefast/insomnia-plugin-scalefast-sync",
   "version": "1.5.0",
   "description": "Plugin to sync your insomnia collections and environments with Scalefast GitLab",
   "main": "dist/index.js",
@@ -7,24 +7,19 @@
     "dist",
     "assets"
   ],
-  "authors": [
-    {
-      "name": "Jan Riedel",
-      "email": "contact@exaspace.de"
-    },
-    {
+  "author": {
       "name": "Diego Rin Martín",
       "email": "diego.rin@scalefast.com"
-    }
-  ],
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Scalefast/insomnia-plugin-scalefast-sync.git"
+    "url": "git+https://github.com/scalefast/insomnia-plugin-scalefast-sync.git"
   },
   "bugs": {
-    "url": "https://github.com/Scalefast/insomnia-plugin-scalefast-sync/issues"
+    "url": "https://github.com/scalefast/insomnia-plugin-scalefast-sync/issues"
   },
+  "homepage": "https://github.com/Scalefast/insomnia-plugin-scalefast-sync#readme",
   "keywords": [
     "git",
     "gitlab",
@@ -73,6 +68,5 @@
     "webpack-cli": "^4.7.2",
     "webpack-merge": "^5.8.0",
     "webpack-node-externals": "^3.0.0"
-  },
-  "author": ""
+  }
 }
