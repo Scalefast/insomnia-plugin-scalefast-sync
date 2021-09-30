@@ -331,7 +331,7 @@ async function checkNewRelease(context) {
 
         const latestTag = await gitlabProvider.fetchLastTag();
 
-        if (latestTag.name === config.currentTag) {
+        if (latestTag.name !== config.currentTag) {
             await pullWorkspace(context, latestTag.name);
         } else {
             await context.app.alert('Info', 'You are using the most recent workspace release: v' + latestTag.name);
