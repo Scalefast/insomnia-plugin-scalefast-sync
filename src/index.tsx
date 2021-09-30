@@ -186,6 +186,7 @@ async function loadConfig(context): Promise<UserConfig | null> {
 
 async function storeConfig(context, userConfig: UserConfig) {
     await context.store.setItem('gitlab-sync:config', JSON.stringify(userConfig));
+    localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', userConfig.currentTag);
 }
 
 async function pushWorkspace(context, models) {
@@ -255,7 +256,7 @@ async function pullWorkspace(context, tag) {
 
         console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to version: v' + tag);
         await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + tag);
-        await updateVersionLabel(tag);
+        updateVersionLabel();
 
     } catch(e) {
         console.error(e);
@@ -263,18 +264,27 @@ async function pullWorkspace(context, tag) {
     }
 }
 
-async function updateVersionLabel(tag) {
-    let element = document.getElementById('workspace-version-label');
-    if (typeof(element) !== 'undefined' && element !== null) {
-        element.textContent = "v" + tag;
-    } else {
-        const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
+function updateVersionLabel() {
+    let tag = localStorage.getItem('insomnia-plugin-scalefast-sync.currentTag');
 
-        element = document.createElement('span');
-        element.id = 'workspace-version-label';
-        element.textContent = "v" + tag;
-        element.className = "version-label";
-        target.insertAdjacentElement('beforebegin', element);
+    if (tag !== null) {
+        let isDomReady = window.setInterval(function (){
+            if (document !== null) { // DOM is ready
+                let element = document.getElementById('workspace-version-label');
+                if (typeof(element) !== 'undefined' && element !== null) {
+                    element.textContent = "v" + tag;
+                } else {
+                    const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
+
+                    element = document.createElement('span');
+                    element.id = 'workspace-version-label';
+                    element.textContent = "v" + tag;
+                    element.className = "version-label";
+                    target.insertAdjacentElement('beforebegin', element);
+                }
+                window.clearInterval(isDomReady);
+            }
+        }, 100)
     }
 }
 
@@ -388,4 +398,5 @@ const workspaceActions = [
     */
 ];
 
+updateVersionLabel();
 export { workspaceActions }
