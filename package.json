@@ -1,6 +1,6 @@
 {
   "name": "@scalefast/insomnia-plugin-scalefast-sync",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Plugin to sync your insomnia collections and environments with Scalefast GitLab",
   "main": "dist/index.js",
   "files": [
@@ -8,8 +8,8 @@
     "assets"
   ],
   "author": {
-      "name": "Diego Rin Martín",
-      "email": "diego.rin@scalefast.com"
+    "name": "Diego Rin Martín",
+    "email": "diego.rin@scalefast.com"
   },
   "license": "MIT",
   "repository": {
