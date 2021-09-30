@@ -1,19 +1,77 @@
-import { Gitlab } from './gitProviders/gitlab';
-import { UserConfig } from './interfaces/UserConfig';
+import {Gitlab} from './gitProviders/gitlab';
+import {UserConfig} from './interfaces/UserConfig';
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
+import './workspace.module.css';
 
-async function loadConfig(context): Promise<UserConfig | null> {
-    const storedConfig = await context.store.getItem('gitlab-sync:config');
-    try {
-        return JSON.parse(storedConfig);
-    } catch(e) {
-        return null;
+const INTERVAL_DURATION = 60000*10;
+let workspaceCheckingInterval = null;
+
+class ConfirmDialog extends React.Component<any, any> {
+    private readonly id: string;
+    constructor(props) {
+        super(props);
+        this.state = {
+            open: false
+        };
+
+        this.id = "workspace-confirmation-dialog";
+
+        this.handleConfirm = this.handleConfirm.bind(this);
+        this.handleCancel = this.handleCancel.bind(this);
+        this.handleChange = this.handleChange.bind(this);
     }
-}
 
-async function storeConfig(context, userConfig: UserConfig) {
-    await context.store.setItem('gitlab-sync:config', JSON.stringify(userConfig));
+    private handleChange(event) {
+        const { target: { name, value } } = event;
+        console.debug("[insomnia-plugin-scalefast-sync] Update state property: ", name, value);
+        this.setState({[name]: value});
+    }
+
+    private handleConfirm(event) {
+        this.props.confirmCallback();
+        document.getElementById(this.id).parentNode.parentNode.parentNode.parentNode.querySelector('button').click()
+    }
+
+    private handleCancel(event) {
+        this.props.cancelCallback();
+        document.getElementById(this.id).parentNode.parentNode.parentNode.parentNode.querySelector('button').click()
+    }
+
+    private flexContainerStyle = {
+        'display': 'flex'
+    }
+
+    private confirmButtonStyle = {
+        'display': 'flex',
+        'flex-direction': 'row-reverse',
+        'flex-basis': '50%'
+    }
+
+    private cancelButtonStyle = {
+        'display': 'flex',
+        'flex-direction': 'row',
+        'flex-basis': '50%'
+    }
+
+    render() {
+        return (
+            <form className="pad" id={this.id}>
+                <div className="form-control form-control--outlined">
+                    <p>There is an updated workspace version available: v{this.props.version}. Do you want to update?</p>
+                </div>
+                <div style={this.flexContainerStyle}>
+                    <div className="margin-top" style={this.cancelButtonStyle}>
+                        <button type="button" onClick={this.handleConfirm}>Yes</button>
+                    </div>
+                    <div className="margin-top" style={this.confirmButtonStyle}>
+                        <button type="button" onClick={this.handleCancel}>No</button>
+                    </div>
+                </div>
+            </form>
+        );
+    }
+
 }
 
 class GitlabConfigForm extends React.Component<any, any> {
@@ -33,12 +91,6 @@ class GitlabConfigForm extends React.Component<any, any> {
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
-
-        const interval = setInterval(() => {
-            console.log("Logs every 5 seconds");
-        }, 5000)
-
-
     }
 
     async componentDidMount() {
@@ -48,10 +100,9 @@ class GitlabConfigForm extends React.Component<any, any> {
         await this.loadBranches();
     }
 
-
     private handleChange(event) {
         const { target: { name, value } } = event;
-        console.debug("Update state property: ", name, value);
+        console.debug("[insomnia-plugin-scalefast-sync] Update state property: ", name, value);
         this.setState({[name]: value});
     }
 
@@ -85,12 +136,6 @@ class GitlabConfigForm extends React.Component<any, any> {
 
     private flexContainerStyle = {
         'display': 'flex'
-    }
-
-    private newBranchButtonStyle = {
-        'display': 'flex',
-        'flex-direction': 'row',
-        'flex-basis': '50%'
     }
 
     private submitButtonStyle = {
@@ -130,6 +175,18 @@ class GitlabConfigForm extends React.Component<any, any> {
       }
 }
 
+async function loadConfig(context): Promise<UserConfig | null> {
+    const storedConfig = await context.store.getItem('gitlab-sync:config');
+    try {
+        return JSON.parse(storedConfig);
+    } catch(e) {
+        return null;
+    }
+}
+
+async function storeConfig(context, userConfig: UserConfig) {
+    await context.store.setItem('gitlab-sync:config', JSON.stringify(userConfig));
+}
 
 async function pushWorkspace(context, models) {
     try {
@@ -196,10 +253,75 @@ async function pullWorkspace(context, tag) {
 
         await storeConfig(context, config);
 
+        console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to version: v' + tag);
+        await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + tag);
+        await updateVersionLabel(tag);
+
     } catch(e) {
         console.error(e);
         throw e;
     }
+}
+
+async function updateVersionLabel(tag) {
+    let element = document.getElementById('workspace-version-label');
+    if (typeof(element) !== 'undefined' && element !== null) {
+        element.textContent = "v" + tag;
+    } else {
+        const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
+
+        element = document.createElement('span');
+        element.id = 'workspace-version-label';
+        element.textContent = "v" + tag;
+        element.className = "version-label";
+        target.insertAdjacentElement('beforebegin', element);
+    }
+}
+
+async function initWorkspaceInterval(context) {
+    console.debug(workspaceCheckingInterval);
+    if (workspaceCheckingInterval === null) {
+        workspaceCheckingInterval = window.setInterval(async function () {
+            await startChecking(context)
+        }, INTERVAL_DURATION)
+    }
+}
+
+async function startChecking(context) {
+    try {
+        const config: UserConfig = await loadConfig(context);
+        const gitlabProvider = new Gitlab(config);
+        const latestTag = await gitlabProvider.fetchLastTag();
+
+        console.debug('[insomnia-plugin-scalefast-sync] Checking for new workspace release...');
+
+        if (latestTag.name !== config.currentTag) {
+            await createConfirmDialog(context, latestTag.name)
+        }
+
+    } catch (e) {
+        console.error(e);
+        throw e;
+    }
+}
+
+async function createConfirmDialog(context, version) {
+    const root = document.createElement('div');
+    ReactDom.render(<ConfirmDialog
+        version={version}
+        confirmCallback={async () => await pullWorkspace(context, version)}
+        cancelCallback={() => console.debug('[insomnia-plugin-scalefast-sync] Workspace update cancelled by user.')}
+        context={context}/>,
+        root
+    );
+
+    context.app.dialog('New workspace available', root, {
+        skinny: true,
+        onHide() {
+            ReactDom.unmountComponentAtNode(root);
+        },
+    });
+
 }
 
 async function checkNewRelease(context) {
@@ -209,10 +331,8 @@ async function checkNewRelease(context) {
 
         const latestTag = await gitlabProvider.fetchLastTag();
 
-        if (latestTag.name !== config.currentTag) {
+        if (latestTag.name === config.currentTag) {
             await pullWorkspace(context, latestTag.name);
-            await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + latestTag.name);
-
         } else {
             await context.app.alert('Info', 'You are using the most recent workspace release: v' + latestTag.name);
         }
@@ -228,7 +348,7 @@ const workspaceActions = [
     {
         label: 'Gitlab - Setup',
         icon: 'fa-gitlab',
-        action(context, models) {
+        async action(context, models) {
             const root = document.createElement('div');
             ReactDom.render(<GitlabConfigForm context={context}/>, root);
 
@@ -238,6 +358,7 @@ const workspaceActions = [
                     ReactDom.unmountComponentAtNode(root);
                 },
             });
+            await initWorkspaceInterval(context);
         }
     },
     {
@@ -245,6 +366,7 @@ const workspaceActions = [
         icon: 'fa-arrow-down',
         action: async(context) => {
             await checkNewRelease(context);
+            await initWorkspaceInterval(context);
         },
     },
     {
@@ -252,9 +374,18 @@ const workspaceActions = [
         icon: 'fa-arrow-up',
         action: async(context, models) => {
             await pushWorkspace(context, models);
-
+            await initWorkspaceInterval(context);
         },
     }
+    /*
+    {
+        label: 'GitLab - Test',
+        icon: 'fa-gitlab',
+        action: async(context, models) => {
+            await updateVersionLabel("0.9.1");
+        },
+    }
+    */
 ];
 
 export { workspaceActions }

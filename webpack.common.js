@@ -48,7 +48,18 @@ module.exports = {
             module: {
                 rules: [
                     { test: /\.tsx$/i, loader: "ts-loader" },
-                    { test: /\.ts$/i, loader: "ts-loader" }
+                    { test: /\.ts$/i, loader: "ts-loader" },
+                    {
+                        test: /\.css$/,
+                        use: [
+                            {
+                                loader: 'style-loader'
+                            },
+                            {
+                                loader: 'css-loader'
+                            }
+                        ]
+                    }
                 ]
             },
             externals: [WebpackNodeExternals({

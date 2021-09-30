@@ -1,0 +1,11 @@
+.version-label {
+    position: absolute;
+    right: 25px;
+    top: 6px;
+    font-size: 11px;
+    color: #000;
+    height: 12px;
+    border-radius: 3px;
+    padding: 4px;
+    background-color: var(--color-surprise) !important;
+}
