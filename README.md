@@ -5,7 +5,12 @@ This plugin is based on [Insomnia Universal Git](https://insomnia.rest/plugins/i
 
 ## Installation
 
-Just install it via the [Insomnia Plugin Hub](https://insomnia.rest/plugins) or using the Insomnia plugin interface and using insomnia-plugin-scalefast-sync as npm package to install.
+Just install it via the [Insomnia Plugin Hub](https://insomnia.rest/plugins) or using the Insomnia plugin interface and using 
+
+```
+@scalefast/insomnia-plugin-scalefast-sync 
+```
+as npm package to install.  
 
 
 ## How to use this plugin
@@ -31,7 +36,7 @@ After installing just hit the dropdown menu located right beneath the workspace/
 ## Setup
 
 * Base URL: Your GitLabs' URL.
-* Access Token: Create an access token with "api" scope.
+* Access Token: Create an [access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) with "api" scope.
 * Project ID: Create a new project to store your configs directly in GitLab and enter the project id which you find in the settings.
 * Workspace File Name: The file your workspace will be stored under (JSON). Choose this freely.
 
