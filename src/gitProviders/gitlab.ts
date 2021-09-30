@@ -44,7 +44,6 @@ export class Gitlab {
         }
     }
 
-
     async createRemoteUserBranch() {
         try {
             const branchName = await this.getCurrentUser() + "_collection_updates";
@@ -53,6 +52,9 @@ export class Gitlab {
                     `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches?branch=${branchName}&ref=master`,
                 );
             }
+
+            return branchName;
+
         } catch (e) {
             console.error(e.response);
             throw 'Creating a new branch via GitLab API failed.'
@@ -124,7 +126,7 @@ export class Gitlab {
             const response = await this.authenticate().post(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests`,
                 {
-                    "source_branch": this.config.branch,
+                    "source_branch": await this.getCurrentUser() + "_collection_updates",
                     "target_branch": "master",
                     "title": mergeRequestTitle,
                     "remove_source_branch": true,
@@ -141,35 +143,47 @@ export class Gitlab {
 
     async isMergeRequestOpen() {
         try {
-            const response = await this.authenticate().get(
-                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests/${this.config.mergeRequestId}`,
-            );
+            if (this.config.mergeRequestId !== null) {
+                const response = await this.authenticate().get(
+                    `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests/${this.config.mergeRequestId}`,
+                );
 
-            return response.data.state === "opened"
+                return response.data.state === "opened"
+            }
+
+            return false;
         } catch (e) {
             console.error(e);
         }
     }
 
     async getCurrentUser() {
-        try {
-            const response = await this.authenticate().get(
-                `${this.config.baseUrl}/api/v4/user`
-            );
-            return (response.data.username)
-        } catch (e) {
-            console.error(e);
-            throw 'Unable to retrieve current user for given token via Gitlab API.'
+        if (localStorage.getItem('insomnia-plugin-scalefast-sync.userId') === null) {
+            try {
+                const response = await this.authenticate().get(
+                    `${this.config.baseUrl}/api/v4/user`
+                );
+
+                localStorage.setItem('insomnia-plugin-scalefast-sync.userId', response.data.username);
+
+            } catch (e) {
+                console.error(e);
+                throw 'Unable to retrieve current user for given token via Gitlab API.'
+            }
+
         }
+
+        return localStorage.getItem('insomnia-plugin-scalefast-sync.userId');
+
     }
 
     async pushWorkspace(content, messageCommit) {
         try {
-            await this.createRemoteUserBranch();
+            const branchName = await this.createRemoteUserBranch();
             await this.authenticate().post(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/commits`,
                 {
-                    "branch": this.config.branch,
+                    "branch": branchName,
                     "commit_message": messageCommit,
                     "actions": [
                         {

@@ -193,7 +193,7 @@ async function pushWorkspace(context, models) {
     try {
         const config: UserConfig = await loadConfig(context);
 
-        var commitMessage = await context.app.prompt(
+        const commitMessage = await context.app.prompt(
             'GitLab - Push Workspace - Commit Message', {
                 label: 'Commit Message',
                 defaultValue: 'Update workspace',
