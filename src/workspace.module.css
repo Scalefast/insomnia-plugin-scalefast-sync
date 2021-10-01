@@ -7,5 +7,50 @@
     height: 12px;
     border-radius: 3px;
     padding: 4px;
+}
+
+.release {
     background-color: var(--color-surprise) !important;
+}
+
+.dirty {
+    background-color: var(--color-danger) !important;
+}
+
+.committed {
+    background-color: var(--color-warning) !important;
+}
+
+.dialog-icon {
+    font-size: 30px;
+    margin-right: 10px;
+    float: left;
+}
+
+.dialog-warning {
+    color: var(--color-warning) !important;
+}
+
+.dialog-info {
+    color: var(--color-info) !important;
+}
+
+.dialog-notice {
+    color: var(--color-notice) !important;
+}
+
+.dialog-danger {
+    color: var(--color-danger) !important;
+}
+
+.dialog-surprise {
+    color: var(--color-surprise) !important;
+}
+
+.dialog-success {
+    color: var(--color-success) !important;
+}
+
+.dialog-error {
+    color: var(--color-danger) !important;
 }

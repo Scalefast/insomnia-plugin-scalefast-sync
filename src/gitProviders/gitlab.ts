@@ -31,19 +31,6 @@ export class Gitlab {
         }
     }
 
-    async createRemoteBranchFromCurrent(branchName) {
-        try {
-            if (await this.branchExists(branchName) === false) {
-                await this.authenticate().post(
-                    `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches?branch=${branchName}&ref=master`,
-                );
-            }
-        } catch (e) {
-            console.error(e.response);
-            throw 'Creating a new branch via GitLab API failed.'
-        }
-    }
-
     async createRemoteUserBranch() {
         try {
             const branchName = await this.getCurrentUser() + "_collection_updates";
@@ -108,8 +95,11 @@ export class Gitlab {
         }
     }
 
-    async pullWorkspace(tag) {
+    async pullWorkspace(tag: string = null) {
         try {
+            if (tag === null) {
+                tag = await this.getCurrentUser() + "_collection_updates";
+            }
             const response = await this.authenticate().get(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName}/raw?ref=${tag}`
             );

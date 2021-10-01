@@ -50,6 +50,7 @@
   "dependencies": {
     "@types/lodash": "^4.14.175",
     "axios": "^0.21.1",
+    "crypto-js": "^4.1.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-lodash": "^0.1.2"
