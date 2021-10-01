@@ -352,6 +352,7 @@ async function getCurrentRelease(context, models, tag, force = false) {
 
         if (state !== COMMIT_STATUS_DIRTY || force) {
             const workspace = await gitlabProvider.pullWorkspace(tag);
+            console.debug(workspace);
             await context.data.import.raw(JSON.stringify(workspace));
 
             config.currentTag = tag;
@@ -382,9 +383,9 @@ function updateVersionLabel() { // TODO: HEAVY REFACTOR HERE!!
     function getLabelIcon(state: string) {
         switch (state) {
             case COMMIT_STATUS_RELEASE:
-                return "fa fa-rocket";
+                return "fa fa-cube";
             case COMMIT_STATUS_DIRTY:
-                return "fa fa-cog";
+                return "fa fa-wrench";
             case COMMIT_STATUS_COMMITTED:
                 return "fa fa-arrow-up"
         }
@@ -443,7 +444,6 @@ async function initCommitStatusInterval(context, models) {
             if (typeof workspaceHash !== "undefined") {
                 const currentWorkspace = await getCurrentWorkspace(context, models);
                 const currentWorkspaceHash = sha256(JSON.stringify(currentWorkspace.resources)).toString();
-                console.log(currentWorkspaceHash + "<==>" + workspaceHash);
                 if (currentWorkspaceHash !== workspaceHash) {
                     localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', "local");
                     localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
@@ -496,7 +496,7 @@ async function createWarningDialog(context, models, version: string = null) {
     const root = document.createElement('div');
     const callback = version === null ?
         async () => await pullWorkspace(context, models, true) :
-        async () => await getCurrentRelease(context, models, version);
+        async () => await getCurrentRelease(context, models, version, true);
 
     ReactDom.render(<ConfirmDialog
             message={"Possible uncommitted workspace changes will be lost if you continue. Do you want to update?"}
@@ -555,7 +555,7 @@ const workspaceActions = [
     },
     {
         label: 'GitLab - Get current release',
-        icon: 'fa-rocket',
+        icon: 'fa-cube',
         action: async(context, models) => {
             await checkNewRelease(context, models);
             await initWorkspaceInterval(context, models);
