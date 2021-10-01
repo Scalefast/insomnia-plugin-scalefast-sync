@@ -2,6 +2,7 @@ import {Gitlab} from './gitProviders/gitlab';
 import {UserConfig} from './interfaces/UserConfig';
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
+import _ from 'lodash';
 import './workspace.module.css';
 
 const INTERVAL_DURATION = 60000*10;
@@ -58,7 +59,7 @@ class ConfirmDialog extends React.Component<any, any> {
         return (
             <form className="pad" id={this.id}>
                 <div className="form-control form-control--outlined">
-                    <p>There is an updated workspace version available: v{this.props.version}. Do you want to update?</p>
+                    <p>{this.props.message}</p>
                 </div>
                 <div style={this.flexContainerStyle}>
                     <div className="margin-top" style={this.cancelButtonStyle}>
@@ -242,22 +243,34 @@ async function pushWorkspace(context, models) {
     }
 }
 
-async function pullWorkspace(context, tag) {
+async function pullWorkspace(context, models, tag, force = false) {
     try {
         const config: UserConfig = await loadConfig(context);
         const gitlabProvider = new Gitlab(config);
 
-        const workspace = await gitlabProvider.pullWorkspace(tag);
-        await context.data.import.raw(JSON.stringify(workspace));
+        const current = await gitlabProvider.pullWorkspace(config.currentTag);
+        const local = JSON.parse(
+            await context.data.export.insomnia({
+                includePrivate: false,
+                format: 'json',
+                workspace: models.workspace
+            })
+        );
 
-        config.currentTag = tag;
+        if (_.isEqual(current.resources, local.resources) || force) {
+            const workspace = await gitlabProvider.pullWorkspace(tag);
+            await context.data.import.raw(JSON.stringify(workspace));
 
-        await storeConfig(context, config);
+            config.currentTag = tag;
 
-        console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to version: v' + tag);
-        await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + tag);
-        updateVersionLabel();
+            await storeConfig(context, config);
 
+            console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to version: v' + tag);
+            await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + tag);
+            updateVersionLabel();
+        } else {
+            await createWarningDialog(context, models, tag);
+        }
     } catch(e) {
         console.error(e);
         throw e;
@@ -272,14 +285,22 @@ function updateVersionLabel() {
             if (document !== null) { // DOM is ready
                 let element = document.getElementById('workspace-version-label');
                 if (typeof(element) !== 'undefined' && element !== null) {
+                    const icon = document.createElement('i');
+                    icon.className = "fa fa-rocket";
+                    icon.style.setProperty('margin-right', '4px');
                     element.textContent = "v" + tag;
+                    element.insertAdjacentElement('afterbegin', icon);
                 } else {
                     const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
 
                     element = document.createElement('span');
+                    const icon = document.createElement('i');
+                    icon.className = "fa fa-rocket";
+                    icon.style.setProperty('margin-right', '4px');
                     element.id = 'workspace-version-label';
                     element.textContent = "v" + tag;
                     element.className = "version-label";
+                    element.insertAdjacentElement('afterbegin', icon);
                     target.insertAdjacentElement('beforebegin', element);
                 }
                 window.clearInterval(isDomReady);
@@ -288,16 +309,16 @@ function updateVersionLabel() {
     }
 }
 
-async function initWorkspaceInterval(context) {
+async function initWorkspaceInterval(context, models) {
     console.debug(workspaceCheckingInterval);
     if (workspaceCheckingInterval === null) {
         workspaceCheckingInterval = window.setInterval(async function () {
-            await startChecking(context)
+            await startChecking(context, models)
         }, INTERVAL_DURATION)
     }
 }
 
-async function startChecking(context) {
+async function startChecking(context, models) {
     try {
         const config: UserConfig = await loadConfig(context);
         const gitlabProvider = new Gitlab(config);
@@ -306,7 +327,7 @@ async function startChecking(context) {
         console.debug('[insomnia-plugin-scalefast-sync] Checking for new workspace release...');
 
         if (latestTag.name !== config.currentTag) {
-            await createConfirmDialog(context, latestTag.name)
+            await createConfirmDialog(context, models, latestTag.name)
         }
 
     } catch (e) {
@@ -315,11 +336,11 @@ async function startChecking(context) {
     }
 }
 
-async function createConfirmDialog(context, version) {
+async function createConfirmDialog(context, models, version) {
     const root = document.createElement('div');
     ReactDom.render(<ConfirmDialog
-        version={version}
-        confirmCallback={async () => await pullWorkspace(context, version)}
+        message={"There is an updated workspace version available: v" + version + ". Do you want to update?"}
+        confirmCallback={async () => await pullWorkspace(context, models, version)}
         cancelCallback={() => console.debug('[insomnia-plugin-scalefast-sync] Workspace update cancelled by user.')}
         context={context}/>,
         root
@@ -334,15 +355,33 @@ async function createConfirmDialog(context, version) {
 
 }
 
-async function checkNewRelease(context) {
+async function createWarningDialog(context, models, version) {
+    const root = document.createElement('div');
+    ReactDom.render(<ConfirmDialog
+            message={"There are uncommitted workspace changes that will be lost if you update. Do you want to continue?"}
+            confirmCallback={async () => await pullWorkspace(context, models, version, true)}
+            cancelCallback={() => console.debug('[insomnia-plugin-scalefast-sync] Workspace update cancelled by user.')}
+            context={context}/>,
+        root
+    );
+
+    context.app.dialog('Uncommitted changes detected', root, {
+        skinny: true,
+        onHide() {
+            ReactDom.unmountComponentAtNode(root);
+        },
+    });
+}
+
+async function checkNewRelease(context, models) {
     try {
         const config: UserConfig = await loadConfig(context);
         const gitlabProvider = new Gitlab(config);
 
         const latestTag = await gitlabProvider.fetchLastTag();
 
-        if (latestTag.name !== config.currentTag) {
-            await pullWorkspace(context, latestTag.name);
+        if (latestTag.name === config.currentTag) {
+            await pullWorkspace(context, models, latestTag.name);
         } else {
             await context.app.alert('Info', 'You are using the most recent workspace release: v' + latestTag.name);
         }
@@ -368,15 +407,15 @@ const workspaceActions = [
                     ReactDom.unmountComponentAtNode(root);
                 },
             });
-            await initWorkspaceInterval(context);
+            await initWorkspaceInterval(context, models);
         }
     },
     {
         label: 'GitLab - Pull Workspace',
         icon: 'fa-arrow-down',
-        action: async(context) => {
-            await checkNewRelease(context);
-            await initWorkspaceInterval(context);
+        action: async(context, models) => {
+            await checkNewRelease(context, models);
+            await initWorkspaceInterval(context, models);
         },
     },
     {
@@ -384,18 +423,16 @@ const workspaceActions = [
         icon: 'fa-arrow-up',
         action: async(context, models) => {
             await pushWorkspace(context, models);
-            await initWorkspaceInterval(context);
+            await initWorkspaceInterval(context, models);
         },
-    }
-    /*
+    },
     {
         label: 'GitLab - Test',
         icon: 'fa-gitlab',
         action: async(context, models) => {
-            await updateVersionLabel("0.9.1");
+            await createWarningDialog(context, models, "1.0.0");
         },
     }
-    */
 ];
 
 updateVersionLabel();
