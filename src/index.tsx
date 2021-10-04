@@ -1,15 +1,15 @@
 import {Gitlab} from './gitProviders/gitlab';
 import {UserConfig} from './interfaces/UserConfig';
 import {ConfirmDialog} from "./components/ConfirmDialog";
-import {GitlabConfigForm} from "./components/GitlabConfirmForm";
+import {GitlabConfigForm} from "./components/GitlabConfigForm";
+import {VersionLabelHelper} from "./helpers/VersionLabelHelper";
 
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import _ from 'lodash';
 import sha256 from 'crypto-js/sha256';
 import './workspace.module.css';
 
-const INTERVAL_DURATION = 60000*10;
+const INTERVAL_DURATION = 60000 * 10;
 
 const COMMIT_STATUS_RELEASE = "release";
 const COMMIT_STATUS_COMMITTED = "committed";
@@ -28,33 +28,16 @@ async function getCurrentWorkspace(context, models) {
     return JSON.parse(workspaceData);
 }
 
-async function pushWorkspace(context, models) {
+async function requestMergeAction(context): Promise<boolean>|null {
     try {
+        if (!await GitlabConfigForm.isConfigured(context)) {
+            await context.app.alert('Plugin not configured', 'Plugin is not configured. Please, run plugin setup before continue.');
+            return false;
+        }
+
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
-
-        const commitMessage = await context.app.prompt(
-            'GitLab - Push Workspace - Commit Message', {
-                label: 'Commit Message',
-                defaultValue: 'Update workspace',
-                submitName: 'Commit',
-                cancelable: true,
-            }
-        );
-
-        const workspaceData = await getCurrentWorkspace(context, models);
         const gitlabProvider = new Gitlab(config);
-
-        // parse, format, stringify again. Ugly but necessary because of Insomnia API design
-        await gitlabProvider.pushWorkspace(
-            JSON.stringify(
-                workspaceData, // is already stringified JSON
-                null,                      // replacer method
-                2                          // indentation
-            ),
-            commitMessage
-        );
-
-        if (await gitlabProvider.isMergeRequestOpen() === false) {
+        if (!await gitlabProvider.isMergeRequestOpen()) {
             const mergeRequestTitle = await context.app.prompt(
                 'Set new merge request title:', {
                     label: 'Merge request title',
@@ -66,135 +49,135 @@ async function pushWorkspace(context, models) {
 
             config.mergeRequestId = await gitlabProvider.createMergeRequest(mergeRequestTitle);
             localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', mergeRequestTitle);
+        } else {
+            await context.app.alert('Merge request', 'There is an already openend merge request from your work branch to master branch. Please, close or merge this one before creating new one.');
         }
 
-        localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', 'local');
-        localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
-        localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspaceData.resources)));
+    } catch (e) {
+        console.error(e);
+        await context.app.alert('Error!', 'There was an error trying to create the merge request.');
+    }
+}
 
+async function pushWorkspaceAction(context, models) {
+    try {
+        if (!await GitlabConfigForm.isConfigured(context)) {
+            await context.app.alert('Plugin not configured', 'Plugin is not configured. Please, run plugin setup before continue.');
+            return false;
+        }
+
+        const config: UserConfig = await GitlabConfigForm.loadConfig(context);
+        const gitlabProvider = new Gitlab(config);
+        const workspaceData = await getCurrentWorkspace(context, models);
+
+        const commitMessage = await context.app.prompt(
+            'GitLab - Push Workspace - Commit Message', {
+                label: 'Commit Message',
+                defaultValue: 'Update workspace',
+                submitName: 'Commit',
+                cancelable: true,
+            }
+        );
+
+        config.currentCommit = await gitlabProvider.pushWorkspace(
+            JSON.stringify(
+                workspaceData,
+                null,
+                2
+            ),
+            commitMessage
+        );
+
+        if (await gitlabProvider.isMergeRequestOpen() === false && config.autoCreateMergeRequest === true) {
+            await requestMergeAction(context);
+        }
 
         await GitlabConfigForm.saveConfig(context, config);
+        localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', 'local');
+        localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
+        localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', config.currentCommit);
+        localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspaceData.resources)));
 
-        await context.app.alert('Success!', 'Your workspace config was successfully pushed.');
+        VersionLabelHelper.update();
+
+        await context.app.alert('Success!', 'Your workspace data was successfully pushed.');
+
     } catch (e) {
         console.error(e);
         await context.app.alert('Error!', 'Something went wrong. Please try pushing again and check your setup.');
     }
 }
 
-async function pullWorkspace(context, models, force: boolean = false) {
+async function pullWorkspaceAction(context, models, force: boolean = false) {
     try {
-        const state = localStorage.getItem('insomnia-plugin-scalefast-sync.commitStatus');
+        if (!await GitlabConfigForm.isConfigured(context)) {
+            await context.app.alert('Plugin not configured', 'Plugin is not configured. Please, run plugin setup before continue.');
+            return false;
+        }
 
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
         const gitlabProvider = new Gitlab(config);
+        const state = localStorage.getItem('insomnia-plugin-scalefast-sync.commitStatus');
 
         if (state !== COMMIT_STATUS_DIRTY || force) {
             const workspace = await gitlabProvider.pullWorkspace();
             await context.data.import.raw(JSON.stringify(workspace));
 
-            config.currentTag = "local";
+            config.currentRelease = "local";
 
             await GitlabConfigForm.saveConfig(context, config);
 
             console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to user branch copy.');
             await context.app.alert('Success!', 'Your current workspace has been updated to the last commit in your work branch.');
 
-            localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', "local");
+            localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', "local");
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
             localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
 
-            updateVersionLabel();
+            VersionLabelHelper.update();
         } else {
             await createWarningDialog(context, models);
         }
-    } catch(e) {
+
+    } catch (e) {
         console.error(e);
         throw e;
     }
 }
 
-async function getCurrentRelease(context, models, tag, force = false) {
+async function getWorkspaceRelease(context, models, tag, force = false) {
     try {
-        const state = localStorage.getItem('insomnia-plugin-scalefast-sync.commitStatus');
+        if (!await GitlabConfigForm.isConfigured(context)) {
+            await context.app.alert('Plugin not configured', 'Plugin is not configured. Please, run plugin setup before continue.');
+            return false;
+        }
 
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
         const gitlabProvider = new Gitlab(config);
+        const state = localStorage.getItem('insomnia-plugin-scalefast-sync.commitStatus');
 
         if (state !== COMMIT_STATUS_DIRTY || force) {
             const workspace = await gitlabProvider.pullWorkspace(tag);
-            console.debug(workspace);
             await context.data.import.raw(JSON.stringify(workspace));
 
-            config.currentTag = tag;
+            config.currentRelease = tag;
 
             await GitlabConfigForm.saveConfig(context, config);
 
             console.debug('[insomnia-plugin-scalefast-sync] Workspace updated to version: v' + tag);
             await context.app.alert('Success!', 'Your current workspace has been updated to the latest version available: v' + tag);
 
-            localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', tag);
+            localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', tag);
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
             localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
 
-            updateVersionLabel();
+            VersionLabelHelper.update();
         } else {
             await createWarningDialog(context, models, tag);
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e);
         throw e;
-    }
-}
-
-function updateVersionLabel() { // TODO: HEAVY REFACTOR HERE!!
-    let tag = localStorage.getItem('insomnia-plugin-scalefast-sync.currentTag');
-    let state = localStorage.getItem('insomnia-plugin-scalefast-sync.commitStatus');
-
-    function getLabelIcon(state: string) {
-        switch (state) {
-            case COMMIT_STATUS_RELEASE:
-                return "fa fa-cube";
-            case COMMIT_STATUS_DIRTY:
-                return "fa fa-wrench";
-            case COMMIT_STATUS_COMMITTED:
-                return "fa fa-arrow-up"
-        }
-    }
-
-    function getLabelTitle(state: string, version: string) {
-        switch (state) {
-            case COMMIT_STATUS_RELEASE:
-                return "Scalefast Workspace Version: " + version;
-            case COMMIT_STATUS_DIRTY:
-                return "Local workspace: UNCOMMITTED!";
-            case COMMIT_STATUS_COMMITTED:
-                return "Local workspace - MR: " + localStorage.getItem('insomnia-plugin-scalefast-sync.mergeRequestTitle');
-        }
-    }
-
-    if (tag !== null) {
-        let isDomReady = window.setInterval(function (){
-            if (document !== null) { // DOM is ready
-                let element = document.getElementById('workspace-version-label');
-                if (typeof element === "undefined" || element === null) {
-                    const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
-                    element = document.createElement('span');
-                    element.id = 'workspace-version-label';
-                    target.insertAdjacentElement('beforebegin', element);
-                }
-
-                const icon = document.createElement('i');
-                icon.className = getLabelIcon(state);
-                icon.style.setProperty('margin-right', '4px');
-                element.textContent = tag === "local" ? "local workspace" : "v" + tag;
-                element.className = "version-label " + state;
-                element.title = getLabelTitle(state, tag);
-                element.insertAdjacentElement('afterbegin', icon);
-
-                window.clearInterval(isDomReady);
-            }
-        }, 200)
     }
 }
 
@@ -212,13 +195,14 @@ async function initCommitStatusInterval(context, models) {
         console.debug('[insomnia-plugin-scalefast-sync] Installing dirty interval (thanks Kong for the plugin API :p) to monitor workspace changes.');
         commitStatusInterval = window.setInterval(async function () {
             const workspaceHash = localStorage.getItem("insomnia-plugin-scalefast-sync.workspaceHash");
-            if (typeof workspaceHash !== "undefined") {
+            console.log("Workspace hash: " + workspaceHash);
+            if (typeof workspaceHash !== "undefined" && workspaceHash !== null) {
                 const currentWorkspace = await getCurrentWorkspace(context, models);
                 const currentWorkspaceHash = sha256(JSON.stringify(currentWorkspace.resources)).toString();
                 if (currentWorkspaceHash !== workspaceHash) {
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.currentTag', "local");
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', "local");
                     localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
-                    updateVersionLabel();
+                    VersionLabelHelper.update();
                 }
             }
         }, 2000);
@@ -229,12 +213,12 @@ async function startChecking(context, models) {
     try {
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
         const gitlabProvider = new Gitlab(config);
-        const latestTag = await gitlabProvider.fetchLastTag();
+        const latestRelease = await gitlabProvider.fetchLastTag();
 
         console.debug('[insomnia-plugin-scalefast-sync] Checking for new workspace release...');
 
-        if (latestTag.name !== config.currentTag) {
-            await createConfirmDialog(context, models, latestTag.name)
+        if (latestRelease.name !== config.currentRelease) {
+            await createConfirmDialog(context, models, latestRelease.name)
         }
 
     } catch (e) {
@@ -246,11 +230,11 @@ async function startChecking(context, models) {
 async function createConfirmDialog(context, models, version) {
     const root = document.createElement('div');
     ReactDom.render(<ConfirmDialog
-        message={"There is an updated workspace version available: v" + version + ". Do you want to update?"}
-        confirmCallback={async () => await pullWorkspace(context, models, version)}
-        cancelCallback={() => console.debug('[insomnia-plugin-scalefast-sync] Workspace update cancelled by user.')}
-        type={"info"}
-        context={context}/>,
+            message={"There is an updated workspace version available: v" + version + ". Do you want to update?"}
+            confirmCallback={async () => await getWorkspaceRelease(context, models, version)}
+            cancelCallback={() => console.debug('[insomnia-plugin-scalefast-sync] Workspace update cancelled by user.')}
+            type={"info"}
+            context={context}/>,
         root
     );
 
@@ -266,8 +250,8 @@ async function createConfirmDialog(context, models, version) {
 async function createWarningDialog(context, models, version: string = null) {
     const root = document.createElement('div');
     const callback = version === null ?
-        async () => await pullWorkspace(context, models, true) :
-        async () => await getCurrentRelease(context, models, version, true);
+        async () => await pullWorkspaceAction(context, models, true) :
+        async () => await getWorkspaceRelease(context, models, version, true);
 
     ReactDom.render(<ConfirmDialog
             message={"Possible uncommitted workspace changes will be lost if you continue. Do you want to update?"}
@@ -286,21 +270,37 @@ async function createWarningDialog(context, models, version: string = null) {
     });
 }
 
-async function checkNewRelease(context, models) {
+async function createPluginConfigDialog(context, models) {
+    const root = document.createElement('div');
+    ReactDom.render(<GitlabConfigForm context={context} models={models}/>, root);
+
+    context.app.dialog('GitLab - Setup', root, {
+        skinny: true,
+        onHide() {
+            ReactDom.unmountComponentAtNode(root);
+        },
+    });
+}
+
+async function getCurrentReleaseAction(context, models) {
     try {
+        if (!await GitlabConfigForm.isConfigured(context)) {
+            await context.app.alert('Plugin not configured', 'Plugin is not configured. Please, run plugin setup before continue.');
+            return false;
+        }
+
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
         const gitlabProvider = new Gitlab(config);
 
         const latestTag = await gitlabProvider.fetchLastTag();
 
-        if (latestTag.name !== config.currentTag) {
-            await getCurrentRelease(context, models, latestTag.name);
+        if (latestTag.name !== config.currentRelease) {
+            await getWorkspaceRelease(context, models, latestTag.name);
         } else {
             await context.app.alert('Info', 'You are using the most recent workspace release: v' + latestTag.name);
         }
 
-    }
-    catch (e) {
+    } catch (e) {
         console.error(e);
         await context.app.alert('Error!', 'Something went wrong. Please try pulling again and check your setup.');
     }
@@ -311,48 +311,49 @@ const workspaceActions = [
         label: 'Gitlab - Setup',
         icon: 'fa-gitlab',
         async action(context, models) {
-            const root = document.createElement('div');
-            ReactDom.render(<GitlabConfigForm context={context}/>, root);
-
-            context.app.dialog('GitLab - Setup', root, {
-                skinny: true,
-                onHide() {
-                    ReactDom.unmountComponentAtNode(root);
-                },
-            });
+            await createPluginConfigDialog(context, models);
             await initWorkspaceInterval(context, models);
-            //await initCommitStatusInterval(context, models);
+            await initCommitStatusInterval(context, models);
         }
     },
     {
         label: 'GitLab - Get current release',
         icon: 'fa-cube',
-        action: async(context, models) => {
-            await checkNewRelease(context, models);
+        action: async (context, models) => {
+            await getCurrentReleaseAction(context, models);
             await initWorkspaceInterval(context, models);
-            //await initCommitStatusInterval(context, models);
+            await initCommitStatusInterval(context, models);
         },
     },
     {
         label: 'GitLab - Push Workspace',
         icon: 'fa-arrow-up',
-        action: async(context, models) => {
-            await pushWorkspace(context, models);
+        action: async (context, models) => {
+            await pushWorkspaceAction(context, models);
             await initWorkspaceInterval(context, models);
-            //await initCommitStatusInterval(context, models);
+            await initCommitStatusInterval(context, models);
         },
     },
     {
         label: 'GitLab - Pull Workspace',
         icon: 'fa-arrow-down',
-        action: async(context, models) => {
-            await pullWorkspace(context, models);
+        action: async (context, models) => {
+            await pullWorkspaceAction(context, models);
             await initWorkspaceInterval(context, models);
-            //await initCommitStatusInterval(context, models);
+            await initCommitStatusInterval(context, models);
         },
     },
-
+    {
+        label: 'GitLab - Request Merge',
+        icon: 'fa-code-fork',
+        action: async (context, models) => {
+            await requestMergeAction(context);
+            await initWorkspaceInterval(context, models);
+            await initCommitStatusInterval(context, models);
+        },
+    }
 ];
 
-updateVersionLabel();
-export { workspaceActions }
+VersionLabelHelper.update();
+
+export {workspaceActions}

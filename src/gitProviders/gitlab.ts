@@ -1,5 +1,4 @@
 import axios from 'axios';
-import {UserConfig} from '../interfaces/UserConfig';
 
 export class Gitlab {
 
@@ -34,7 +33,7 @@ export class Gitlab {
     async createRemoteUserBranch() {
         try {
             const branchName = await this.getCurrentUser() + "_collection_updates";
-            if (await this.branchExists(branchName) === false) {
+            if (await this.getBranch(branchName) === null) {
                 await this.authenticate().post(
                     `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches?branch=${branchName}&ref=master`,
                 );
@@ -48,15 +47,19 @@ export class Gitlab {
         }
     }
 
-    async branchExists(branchName) {
+    async getBranch(branchName: string = null) {
         try {
-            await this.authenticate().get(
+            if (branchName === null) {
+                branchName = await this.getCurrentUser() + "_collection_updates";
+            }
+
+            const response = await this.authenticate().get(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches/${branchName}`,
             );
 
-            return true;
+            return response.data;
         } catch (e) {
-            return false;
+            return null;
         }
     }
 
@@ -69,12 +72,26 @@ export class Gitlab {
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches`
             );
 
-            const branches = response.data.map((o) => o.name);
-
-            return branches;
+            return response.data.map((o) => o.name);
         } catch (e) {
             console.error(e);
             throw 'Fetching the projects branches via GitLab API failed.'
+        }
+    }
+
+    async fetchTags() {
+        if (!this.config?.baseUrl || !this.config?.projectId || !this.config?.token) {
+            return [];
+        }
+        try {
+            const response = await this.authenticate().get(
+                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/tags`
+            );
+
+            return response.data.map((o) => o.name);
+        } catch (e) {
+            console.error(e);
+            throw 'Fetching the projects tags via GitLab API failed.'
         }
     }
 
@@ -131,7 +148,25 @@ export class Gitlab {
         }
     }
 
-    async isMergeRequestOpen() {
+    async getCurrentMergeRequest() {
+        try {
+            const branchName = await this.getCurrentUser() + "_collection_updates";
+            const response = await this.authenticate().get(
+                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests?state=opened&source_branch=${branchName}`,
+            );
+
+            if (response.data[0]) {
+                return response.data[0];
+            }
+
+            return null;
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async isMergeRequestOpen(): Promise<boolean> {
         try {
             if (this.config.mergeRequestId !== null) {
                 const response = await this.authenticate().get(
@@ -170,7 +205,7 @@ export class Gitlab {
     async pushWorkspace(content, messageCommit) {
         try {
             const branchName = await this.createRemoteUserBranch();
-            await this.authenticate().post(
+            const response = await this.authenticate().post(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/commits`,
                 {
                     "branch": branchName,
@@ -184,6 +219,8 @@ export class Gitlab {
                     ]
                 },
             );
+
+            return response.data.short_id;
         } catch (e) {
             if (e.response.data.message === "A file with this name doesn't exist") {
                 await this.initRemoteConfigFile()

@@ -4,7 +4,9 @@ export interface UserConfig {
     'projectId': number,
     'configFileName': string,
     'branch': string,
-    'createMergeRequest': boolean,
+    'autoCreateMergeRequest': boolean,
     'mergeRequestId': number,
-    'currentTag': string
+    'currentRelease': string,
+    'currentCommit': string,
+    'isSynced': boolean
 }
