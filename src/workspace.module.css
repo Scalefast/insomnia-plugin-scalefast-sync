@@ -4,7 +4,8 @@
     top: 6px;
     font-size: 11px;
     color: #000;
-    height: 12px;
+    height: 13px;
+    min-height: 13px;
     border-radius: 3px;
     padding: 4px;
 }

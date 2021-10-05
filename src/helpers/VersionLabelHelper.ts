@@ -8,7 +8,7 @@ export class VersionLabelHelper {
             case COMMIT_STATUS_RELEASE:
                 return "fa fa-cube";
             case COMMIT_STATUS_DIRTY:
-                return "fa fa-wrench";
+                return "fa fa-exclamation-triangle";
             case COMMIT_STATUS_COMMITTED:
                 return "fa fa-code-fork"
         }

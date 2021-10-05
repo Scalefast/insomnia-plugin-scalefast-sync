@@ -3,8 +3,6 @@ import {UserConfig} from "../interfaces/UserConfig";
 import {Gitlab} from "../gitProviders/gitlab";
 import {VersionLabelHelper} from "../helpers/VersionLabelHelper";
 
-import sha256 from 'crypto-js/sha256';
-
 export class GitlabConfigForm extends React.Component<any, any> {
     private readonly id: string;
 
@@ -66,8 +64,8 @@ export class GitlabConfigForm extends React.Component<any, any> {
 
     private async syncGitlabData() {
         const provider = new Gitlab(this.state);
-        const branch = await provider.getBranch();
         if (await provider.branchExists()) { // There are a work branch for current user
+            const branch = await provider.getBranch();
             this.setState({
                 'currentRelease': 'local',
                 'branch': branch.name,
@@ -80,7 +78,7 @@ export class GitlabConfigForm extends React.Component<any, any> {
             localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', 'local');
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', branch.commit.short_id);
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', 'committed');
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspace));
 
             this.props.context.app.alert("Workspace synced", "Your local workspace have been synced with the most recent commit (" + branch.commit.short_id + ") in your work branch.");
 
@@ -95,14 +93,20 @@ export class GitlabConfigForm extends React.Component<any, any> {
                 localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestId', mr.iid);
             }
         } else { // No work branch so we search for most updated release
-            const workspace = await provider.pullWorkspace(this.state.currentRelease);
+            const latestRelease = await provider.fetchLastTag();
+            this.setState({
+                'currentRelease': latestRelease.name,
+                'branch': 'master'
+            });
+
+            const workspace = await provider.pullWorkspace(latestRelease.name);
             await this.props.context.data.import.raw(JSON.stringify(workspace));
 
-            localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', this.state.currentRelease);
+            localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', latestRelease.name);
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', 'release');
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', JSON.stringify(workspace));
 
-            this.props.context.app.alert("Workspace synced", "Your local workspace have been synced with the most recent relase found v" + this.state.currentRelease);
+            this.props.context.app.alert("Workspace synced", "Your local workspace have been synced with the most recent relase found v" + latestRelease.name);
 
         }
 

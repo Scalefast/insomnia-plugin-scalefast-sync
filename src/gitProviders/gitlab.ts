@@ -119,14 +119,14 @@ export class Gitlab {
 
     async fetchLastTag() {
         if (!this.config?.baseUrl || !this.config?.projectId || !this.config?.token) {
-            return [];
+            return {};
         }
         try {
             const response = await this.authenticate().get(
                 `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/tags`
             );
 
-            return response.data[0];
+            return response.data.shift();
 
         } catch (e) {
             console.error(e);
@@ -134,13 +134,14 @@ export class Gitlab {
         }
     }
 
-    async pullWorkspace(tag: string = null) {
+    async pullWorkspace(ref: string = null) {
         try {
-            if (tag === null) {
-                tag = await this.getCurrentUser() + "_collection_updates";
+            if (ref === null) {
+                const userBranch = await this.getCurrentUser() + "_collection_updates";
+                ref = await this.branchExists() ? userBranch : "master";
             }
             const response = await this.authenticate().get(
-                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName}/raw?ref=${tag}`
+                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName}/raw?ref=${ref}`
             );
 
             return (response.data);

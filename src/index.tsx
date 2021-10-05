@@ -3,10 +3,11 @@ import {UserConfig} from './interfaces/UserConfig';
 import {ConfirmDialog} from "./components/ConfirmDialog";
 import {GitlabConfigForm} from "./components/GitlabConfigForm";
 import {VersionLabelHelper} from "./helpers/VersionLabelHelper";
+import {WorkspaceHelper} from "./helpers/WorkspaceHelper";
 
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import sha256 from 'crypto-js/sha256';
+import {isEqual} from "lodash";
 import './workspace.module.css';
 
 const INTERVAL_DURATION = 60000 * 10;
@@ -96,7 +97,7 @@ async function pushWorkspaceAction(context, models) {
         localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', 'local');
         localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
         localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', config.currentCommit);
-        localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspaceData.resources)));
+        localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspaceData));
 
         VersionLabelHelper.update();
 
@@ -132,7 +133,7 @@ async function pullWorkspaceAction(context, models, force: boolean = false) {
 
             localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', "local");
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspace));
 
             VersionLabelHelper.update();
         } else {
@@ -169,7 +170,7 @@ async function getWorkspaceRelease(context, models, tag, force = false) {
 
             localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', tag);
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceHash', sha256(JSON.stringify(workspace.resources)));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspace));
 
             VersionLabelHelper.update();
         } else {
@@ -194,17 +195,20 @@ async function initCommitStatusInterval(context, models) {
     if (commitStatusInterval === null) {
         console.debug('[insomnia-plugin-scalefast-sync] Installing dirty interval (thanks Kong for the plugin API :p) to monitor workspace changes.');
         commitStatusInterval = window.setInterval(async function () {
-            const workspaceHash = localStorage.getItem("insomnia-plugin-scalefast-sync.workspaceHash");
-            console.log("Workspace hash: " + workspaceHash);
-            if (typeof workspaceHash !== "undefined" && workspaceHash !== null) {
-                const currentWorkspace = await getCurrentWorkspace(context, models);
-                const currentWorkspaceHash = sha256(JSON.stringify(currentWorkspace.resources)).toString();
-                if (currentWorkspaceHash !== workspaceHash) {
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', "local");
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
-                    VersionLabelHelper.update();
+            const workspaceData = JSON.parse(localStorage.getItem("insomnia-plugin-scalefast-sync.workspaceData"));
+            const release = localStorage.getItem("insomnia-plugin-scalefast-sync.currentRelease");
+            const currentWorkspace = await getCurrentWorkspace(context, models);
+
+            if (!WorkspaceHelper.isEqual(currentWorkspace,workspaceData)) {
+                localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
+            } else {
+                if (release === "local") {
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
+                } else {
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
                 }
             }
+            VersionLabelHelper.update();
         }, 2000);
     }
 }
