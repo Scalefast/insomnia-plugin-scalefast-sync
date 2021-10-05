@@ -19,9 +19,11 @@ export class VersionLabelHelper {
             case COMMIT_STATUS_RELEASE:
                 return "Scalefast Workspace Version: " + version;
             case COMMIT_STATUS_DIRTY:
-                return "Local workspace: UNCOMMITTED!";
+                return "Local workspace: There are uncommitted changes!!";
             case COMMIT_STATUS_COMMITTED:
-                return "Local workspace - MR: " + localStorage.getItem('insomnia-plugin-scalefast-sync.mergeRequestTitle') + ' - Commit hash: ' + localStorage.getItem('insomnia-plugin-scalefast-sync.commitId');
+                const commit = localStorage.getItem('insomnia-plugin-scalefast-sync.commitId') !== null ? localStorage.getItem('insomnia-plugin-scalefast-sync.commitId') : "none";
+                const MR = localStorage.getItem('insomnia-plugin-scalefast-sync.mergeRequestTitle') !== null ? localStorage.getItem('insomnia-plugin-scalefast-sync.mergeRequestTitle') : "none";
+                return "Local workspace - MR: " + MR + ' - Commit hash: ' + commit;
         }
     }
 

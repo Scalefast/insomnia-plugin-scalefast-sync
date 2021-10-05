@@ -7,7 +7,6 @@ import {WorkspaceHelper} from "./helpers/WorkspaceHelper";
 
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
-import {isEqual} from "lodash";
 import './workspace.module.css';
 
 const INTERVAL_DURATION = 60000 * 10;
@@ -18,10 +17,11 @@ const COMMIT_STATUS_DIRTY = "dirty";
 
 let workspaceCheckingInterval = null;
 let commitStatusInterval = null;
+let gitlabSyncInterval = null;
 
 async function getCurrentWorkspace(context, models) {
     let workspaceData = await context.data.export.insomnia({
-        includePrivate: false,
+        includePrivate: true,
         format: 'json',
         workspace: models.workspace
     });
@@ -38,21 +38,27 @@ async function requestMergeAction(context): Promise<boolean>|null {
 
         const config: UserConfig = await GitlabConfigForm.loadConfig(context);
         const gitlabProvider = new Gitlab(config);
-        if (!await gitlabProvider.isMergeRequestOpen()) {
-            const mergeRequestTitle = await context.app.prompt(
-                'Set new merge request title:', {
-                    label: 'Merge request title',
-                    defaultValue: 'Tell us what are you doing...',
-                    submitName: 'Submit',
-                    cancelable: true,
-                }
-            );
+        if (await gitlabProvider.branchExists()) {
+            if (!await gitlabProvider.isMergeRequestOpen()) {
+                const mergeRequestTitle = await context.app.prompt(
+                    'Set new merge request title:', {
+                        label: 'Merge request title',
+                        defaultValue: 'Tell us what are you doing...',
+                        submitName: 'Submit',
+                        cancelable: true,
+                    }
+                );
 
-            config.mergeRequestId = await gitlabProvider.createMergeRequest(mergeRequestTitle);
-            localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', mergeRequestTitle);
+                config.mergeRequestId = await gitlabProvider.createMergeRequest(mergeRequestTitle);
+                localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', mergeRequestTitle);
+            } else {
+                await context.app.alert('Merge request', 'There is an already openend merge request from your work branch to master branch. Please, close or merge this one before creating new one.');
+            }
         } else {
-            await context.app.alert('Merge request', 'There is an already openend merge request from your work branch to master branch. Please, close or merge this one before creating new one.');
+            await context.app.alert('Work branch not found', 'You are trying to request merge before pushing anything. Please push changes before requesting merge.');
         }
+
+
 
     } catch (e) {
         console.error(e);
@@ -97,7 +103,7 @@ async function pushWorkspaceAction(context, models) {
         localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', 'local');
         localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
         localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', config.currentCommit);
-        localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspaceData));
+        localStorage.setItem('insomnia-plugin-scalefast-sync.workspace', JSON.stringify(workspaceData));
 
         VersionLabelHelper.update();
 
@@ -133,7 +139,7 @@ async function pullWorkspaceAction(context, models, force: boolean = false) {
 
             localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', "local");
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspace));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspace', JSON.stringify(workspace));
 
             VersionLabelHelper.update();
         } else {
@@ -170,7 +176,7 @@ async function getWorkspaceRelease(context, models, tag, force = false) {
 
             localStorage.setItem('insomnia-plugin-scalefast-sync.currentRelease', tag);
             localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
-            localStorage.setItem('insomnia-plugin-scalefast-sync.workspaceData', JSON.stringify(workspace));
+            localStorage.setItem('insomnia-plugin-scalefast-sync.workspace', JSON.stringify(workspace));
 
             VersionLabelHelper.update();
         } else {
@@ -191,24 +197,56 @@ async function initWorkspaceInterval(context, models) {
     }
 }
 
+async function initGitlabSyncInterval(context) {
+    if (gitlabSyncInterval === null) {
+        console.debug('[insomnia-plugin-scalefast-sync] Installing interval to get synced data from gitlab repository');
+        gitlabSyncInterval = window.setInterval(async function () {
+            const config: UserConfig = await GitlabConfigForm.loadConfig(context);
+            const provider = new Gitlab(config);
+
+            if (await provider.branchExists()) {
+                const branch = await provider.getBranch();
+                const mr = await provider.getCurrentMergeRequest();
+
+                localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', branch.commit.short_id);
+                if (mr !== null) {
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', mr.title);
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestId', mr.iid);
+                } else {
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', null);
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestId', null);
+                }
+            } else {
+                localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', null);
+            }
+
+        }, 10000);
+    }
+}
+
 async function initCommitStatusInterval(context, models) {
     if (commitStatusInterval === null) {
         console.debug('[insomnia-plugin-scalefast-sync] Installing dirty interval (thanks Kong for the plugin API :p) to monitor workspace changes.');
         commitStatusInterval = window.setInterval(async function () {
-            const workspaceData = JSON.parse(localStorage.getItem("insomnia-plugin-scalefast-sync.workspaceData"));
+            const workspaceData = JSON.parse(localStorage.getItem("insomnia-plugin-scalefast-sync.workspace"));
             const release = localStorage.getItem("insomnia-plugin-scalefast-sync.currentRelease");
             const currentWorkspace = await getCurrentWorkspace(context, models);
 
-            if (!WorkspaceHelper.isEqual(currentWorkspace,workspaceData)) {
-                localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
-            } else {
-                if (release === "local") {
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
+            if (
+                (typeof workspaceData !== "undefined" && workspaceData !== null) &&
+                (typeof currentWorkspace !== "undefined" && currentWorkspace !== null)
+            ) {
+                if (!WorkspaceHelper.isEqual(currentWorkspace,workspaceData)) {
+                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_DIRTY);
                 } else {
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
+                    if (release === "local") {
+                        localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_COMMITTED);
+                    } else {
+                        localStorage.setItem('insomnia-plugin-scalefast-sync.commitStatus', COMMIT_STATUS_RELEASE);
+                    }
                 }
+                VersionLabelHelper.update();
             }
-            VersionLabelHelper.update();
         }, 2000);
     }
 }
@@ -318,6 +356,7 @@ const workspaceActions = [
             await createPluginConfigDialog(context, models);
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
+            await initGitlabSyncInterval(context);
         }
     },
     {
@@ -327,6 +366,7 @@ const workspaceActions = [
             await getCurrentReleaseAction(context, models);
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
+            await initGitlabSyncInterval(context);
         },
     },
     {
@@ -336,6 +376,7 @@ const workspaceActions = [
             await pushWorkspaceAction(context, models);
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
+            await initGitlabSyncInterval(context);
         },
     },
     {
@@ -345,6 +386,7 @@ const workspaceActions = [
             await pullWorkspaceAction(context, models);
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
+            await initGitlabSyncInterval(context);
         },
     },
     {
@@ -354,6 +396,7 @@ const workspaceActions = [
             await requestMergeAction(context);
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
+            await initGitlabSyncInterval(context);
         },
     }
 ];

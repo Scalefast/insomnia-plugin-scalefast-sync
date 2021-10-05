@@ -151,20 +151,24 @@ export class Gitlab {
         }
     }
 
-    async createMergeRequest(mergeRequestTitle) {
+    async createMergeRequest(mergeRequestTitle): Promise<number> | null {
         try {
-            const response = await this.authenticate().post(
-                `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests`,
-                {
-                    "source_branch": await this.getCurrentUser() + "_collection_updates",
-                    "target_branch": "master",
-                    "title": mergeRequestTitle,
-                    "remove_source_branch": true,
-                    "squash": true
-                }
-            );
+            if (await this.branchExists()) {
+                const response = await this.authenticate().post(
+                    `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/merge_requests`,
+                    {
+                        "source_branch": await this.getCurrentUser() + "_collection_updates",
+                        "target_branch": "master",
+                        "title": mergeRequestTitle,
+                        "remove_source_branch": true,
+                        "squash": true
+                    }
+                );
 
-            return (response.data.iid);
+                return (response.data.iid);
+            }
+
+            return null;
         } catch (e) {
             console.error(e);
             throw 'Creating merge request via Gitlab API failed.'
