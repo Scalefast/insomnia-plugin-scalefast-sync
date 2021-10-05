@@ -61,6 +61,9 @@ If you have uncommitted changes you will get a red pill like the one in the foll
 
 ![uncommitted changes indicator](https://i.postimg.cc/vZpCMZPZ/dirty.png)
 
+## Known Bugs
+At least there is a known and, at the moment, not resolvable bug. The first time the plugin is configured tries to sync the workspace with the remote repository, after this operation, Insomnia is unable to export the current local workspace correctly, and the resources array is always empty. Because of that, the workspace state indicator always appears red (uncommitted changes), even when there are not changes at all. At the moment we don't have any way to resolve this bug and the only workaround is close and open Insomnia once.
+
 ## Notes
 This is the result of the first three days of React development in my life, maybe, or almost sure, the code is crap and has bugs and malfunctions. Please, if you find one, open an issue. If you want to improve the code, please open a pull request, all help is welcome.
 

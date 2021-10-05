@@ -213,14 +213,18 @@ async function initGitlabSyncInterval(context) {
                     localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', mr.title);
                     localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestId', mr.iid);
                 } else {
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestTitle', null);
-                    localStorage.setItem('insomnia-plugin-scalefast-sync.mergeRequestId', null);
+                    localStorage.removeItem('insomnia-plugin-scalefast-sync.mergeRequestTitle');
+                    localStorage.removeItem('insomnia-plugin-scalefast-sync.mergeRequestId');
                 }
             } else {
-                localStorage.setItem('insomnia-plugin-scalefast-sync.commitId', null);
+                localStorage.removeItem('insomnia-plugin-scalefast-sync.commitId');
+                localStorage.removeItem('insomnia-plugin-scalefast-sync.mergeRequestTitle');
+                localStorage.removeItem('insomnia-plugin-scalefast-sync.mergeRequestId');
             }
 
-        }, 10000);
+            VersionLabelHelper.update();
+
+        }, 60000);
     }
 }
 
