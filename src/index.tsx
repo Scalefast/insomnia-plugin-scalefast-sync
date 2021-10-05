@@ -351,7 +351,24 @@ const workspaceActions = [
             await initWorkspaceInterval(context, models);
             await initCommitStatusInterval(context, models);
         },
+    },
+    {
+        label: 'GitLab - Test',
+        icon: 'fa-vial',
+        action: async (context, models) => {
+            const config: UserConfig = await GitlabConfigForm.loadConfig(context);
+            const gitlabProvider = new Gitlab(config);
+
+            try {
+               const foo =  await gitlabProvider.branchExists("master");
+               console.log(foo);
+            } catch (e) {
+                context.app.alert("Meh!", "Branch not found");
+            }
+
+        },
     }
+
 ];
 
 VersionLabelHelper.update();

@@ -67,7 +67,7 @@ export class GitlabConfigForm extends React.Component<any, any> {
     private async syncGitlabData() {
         const provider = new Gitlab(this.state);
         const branch = await provider.getBranch();
-        if (branch !== null) { // There are a work branch for current user
+        if (await provider.branchExists()) { // There are a work branch for current user
             this.setState({
                 'currentRelease': 'local',
                 'branch': branch.name,

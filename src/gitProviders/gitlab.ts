@@ -47,6 +47,28 @@ export class Gitlab {
         }
     }
 
+    async branchExists(branchName: string = null): Promise<boolean> {
+        try {
+            if (branchName === null) {
+                branchName = await this.getCurrentUser() + "_collection_updates";
+            }
+
+            const branches = await this.fetchBranches();
+            for (const branch of branches) {
+                console.log(branch);
+                if (branch === branchName) {
+                    return true;
+                }
+            }
+
+            return false;
+
+        } catch (e) {
+            throw e;
+        }
+
+    }
+
     async getBranch(branchName: string = null) {
         try {
             if (branchName === null) {
