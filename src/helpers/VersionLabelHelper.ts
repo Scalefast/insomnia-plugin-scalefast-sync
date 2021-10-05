@@ -33,22 +33,26 @@ export class VersionLabelHelper {
             let isDomReady = window.setInterval(function () {
                 if (document !== null) { // DOM is ready
                     let element = document.getElementById('workspace-version-label');
-                    if (typeof element === "undefined" || element === null) {
-                        const target = document.querySelector('div.sidebar__item').querySelector('div.sidebar__expand');
-                        element = document.createElement('span');
-                        element.id = 'workspace-version-label';
-                        target.insertAdjacentElement('beforebegin', element);
+                    let target = document.querySelector('div.sidebar__item');
+                    if (typeof target !== "undefined" && target !== null) {
+                        target = target.querySelector('div.sidebar__expand');
+                        if (typeof element === "undefined" || element === null) {
+                            element = document.createElement('span');
+                            element.id = 'workspace-version-label';
+                            target.insertAdjacentElement('beforebegin', element);
+                        }
+
+                        const icon = document.createElement('i');
+                        icon.className = VersionLabelHelper.getLabelIcon(state);
+                        icon.style.setProperty('margin-right', '4px');
+                        element.textContent = tag === "local" ? "local workspace" : "v" + tag;
+                        element.className = "version-label " + state;
+                        element.title = VersionLabelHelper.getLabelTitle(state, tag);
+                        element.insertAdjacentElement('afterbegin', icon);
+
+                        window.clearInterval(isDomReady);
+
                     }
-
-                    const icon = document.createElement('i');
-                    icon.className = VersionLabelHelper.getLabelIcon(state);
-                    icon.style.setProperty('margin-right', '4px');
-                    element.textContent = tag === "local" ? "local workspace" : "v" + tag;
-                    element.className = "version-label " + state;
-                    element.title = VersionLabelHelper.getLabelTitle(state, tag);
-                    element.insertAdjacentElement('afterbegin', icon);
-
-                    window.clearInterval(isDomReady);
                 }
             }, 200)
         }
