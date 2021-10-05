@@ -12,6 +12,14 @@ Just install it via the [Insomnia Plugin Hub](https://insomnia.rest/plugins) or 
 ```
 as npm package to install.  
 
+## Setup
+
+* **Base URL**: GitLabs instance URL. (This could be a custom domain for enterprise gitlab instance)
+* **Access Token**: Create an [access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) with "api" scope.
+* **Project ID**: Enter the project id of the repository you want to use for syncing workspace. You will find it in the settings.
+* **Workspace File Name**: The file your workspace will be stored under (JSON). Choose this freely.
+
+![server configuration](https://i.postimg.cc/sgJLWJ5R/plugin-setup.png)
 
 ## How to use this plugin
 
@@ -52,15 +60,6 @@ If you are using your work branch, with or without an opened merge request, you 
 If you have uncommitted changes you will get a red pill like the one in the following image. You will get a warning and a confirm dialog if you try to sync your workspace when in a "dirty" state, anyway, due to the way Insomnia imports workspaces only coincident resources will be synced, I mean, if you have, for example, a group of requests in your local workspace that are not in the release, the sync operation will not touch them, making hard to lose local work on updates.
 
 ![uncommitted changes indicator](https://i.postimg.cc/vZpCMZPZ/dirty.png)
-
-## Setup
-
-* Base URL: Your GitLabs' URL.
-* Access Token: Create an [access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) with "api" scope.
-* Project ID: Create a new project to store your configs directly in GitLab and enter the project id which you find in the settings.
-* Workspace File Name: The file your workspace will be stored under (JSON). Choose this freely.
-
-![server configuration](https://i.postimg.cc/sgJLWJ5R/plugin-setup.png)
 
 ## Notes
 This is the result of the first three days of React development in my life, maybe, or almost sure, the code is crap and has bugs and malfunctions. Please, if you find one, open an issue. If you want to improve the code, please open a pull request, all help is welcome.
