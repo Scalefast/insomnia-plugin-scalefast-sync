@@ -1,6 +1,6 @@
 {
   "name": "@scalefast/insomnia-plugin-scalefast-sync",
-  "version": "1.7.5",
+  "version": "1.8.0",
   "description": "Plugin to sync your insomnia collections and environments with Scalefast GitLab",
   "main": "dist/index.js",
   "files": [
