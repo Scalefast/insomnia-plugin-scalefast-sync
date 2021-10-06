@@ -1,6 +1,6 @@
 import * as React from "react";
 import {UserConfig} from "../interfaces/UserConfig";
-import {Gitlab} from "../gitProviders/gitlab";
+import {GitlabProvider} from "../gitProviders/GitlabProvider";
 import {VersionLabelHelper} from "../helpers/VersionLabelHelper";
 
 export class GitlabConfigForm extends React.Component<any, any> {
@@ -63,7 +63,7 @@ export class GitlabConfigForm extends React.Component<any, any> {
     }
 
     private async syncGitlabData() {
-        const provider = new Gitlab(this.state);
+        const provider = new GitlabProvider(this.state);
         if (await provider.branchExists()) { // There are a work branch for current user
             const branch = await provider.getBranch();
 
@@ -121,7 +121,7 @@ export class GitlabConfigForm extends React.Component<any, any> {
     }
 
     private async loadBranches() {
-        const provider = new Gitlab(this.state);
+        const provider = new GitlabProvider(this.state);
 
         const branches: Array<any> = await provider.fetchBranches();
         const branchOptions = branches.map((b) => {
@@ -138,7 +138,7 @@ export class GitlabConfigForm extends React.Component<any, any> {
     }
 
     private async loadReleases() {
-        const provider = new Gitlab(this.state);
+        const provider = new GitlabProvider(this.state);
 
         const tags: Array<any> = await provider.fetchTags();
         const releases = tags.map((b) => {

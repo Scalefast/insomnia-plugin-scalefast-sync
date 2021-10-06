@@ -1,5 +1,5 @@
 import axios from 'axios';
-export class Gitlab {
+export class GitlabProvider {
     constructor(context) {
         this.context = context;
     }
