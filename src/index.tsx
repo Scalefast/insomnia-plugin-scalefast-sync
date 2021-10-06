@@ -2,7 +2,7 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import sha256 from 'crypto-js/sha256';
 
-import {GitlabProvider} from './gitProviders/GitlabProvider';
+import {GitlabProvider} from './providers/GitlabProvider';
 import {UserConfig} from './interfaces/UserConfig';
 import {ConfirmDialog} from "./components/ConfirmDialog";
 import {GitlabConfigForm} from "./components/GitlabConfigForm";
@@ -10,7 +10,6 @@ import {VersionLabelHelper} from "./helpers/VersionLabelHelper";
 import {WorkspaceHelper} from "./helpers/WorkspaceHelper";
 import './workspace.module.css';
 import {IntervalFunction} from "./types/IntervalFunction";
-
 
 const TIME_MINUTE = 60000;
 const RELEASE_INTERVAL_DURATION = TIME_MINUTE * 10;

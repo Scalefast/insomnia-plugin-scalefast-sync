@@ -1,6 +1,6 @@
 import * as React from "react";
 import {UserConfig} from "../interfaces/UserConfig";
-import {GitlabProvider} from "../gitProviders/GitlabProvider";
+import {GitlabProvider} from "../providers/GitlabProvider";
 import {VersionLabelHelper} from "../helpers/VersionLabelHelper";
 
 export class GitlabConfigForm extends React.Component<any, any> {
