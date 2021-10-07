@@ -389,13 +389,6 @@ const workspaceActions = [
             await requestMergeAction(context);
             await installIntervals(context, data);
         },
-    },
-    {
-        label: 'GitLab - Test Lab',
-        icon: 'fa-vial',
-        action: async (context, data) => {
-            await WorkspaceHelper.emptyWorkspace(context, data);
-        },
     }
 ];
 
