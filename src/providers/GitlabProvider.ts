@@ -77,7 +77,7 @@ export class GitlabProvider implements GitProvider{
         }
     }
 
-    async pullWorkspace(ref: string = null): Promise<string> {
+    async pullWorkspace(ref: string = null, format: string = "json"): Promise<string> {
         try {
             if (ref === null) {
                 const userBranch = await this.getCurrentUser() + "_collection_updates";
@@ -85,7 +85,11 @@ export class GitlabProvider implements GitProvider{
             }
             const workspace = await this.client.RepositoryFiles.show(this.config.projectId, this.config.configFileName, ref);
             const json = Base64.decode(workspace.content);
-            return JSON.parse(json);
+            if (format === "json") {
+                return JSON.parse(json);
+            }
+
+            return json;
         } catch (e) {
             console.error(e);
             throw 'Fetching the workspace via GitLab API failed.'
@@ -160,9 +164,10 @@ export class GitlabProvider implements GitProvider{
     }
 
     private async getCurrentUser(): Promise<string> {
-        if (localStorage.getItem('insomnia-plugin-scalefast-sync.userId') === null) {
+        const cachedUsername = localStorage.getItem('insomnia-plugin-scalefast-sync.userId');
+        if (typeof cachedUsername === "undefined" || cachedUsername === null) {
             try {
-                const me = this.client.Users.current();
+                const me = await this.client.Users.current();
                 localStorage.setItem('insomnia-plugin-scalefast-sync.userId', me.username);
             } catch (e) {
                 console.error(e);
