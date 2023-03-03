@@ -63,7 +63,6 @@
     "clean-webpack-plugin": "^4.0.0-alpha.0",
     "css-loader": "^0.28.7",
     "exports-loader": "^3.0.0",
-    "insomnia-components": "^2.3.0",
     "style-loader": "^0.18.2",
     "ts-loader": "^9.2.3",
     "typescript": "^4.3.5",
